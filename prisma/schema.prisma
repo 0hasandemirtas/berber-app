@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Auth.js Models ─────────────────────────────────────
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  phone         String?
+  accounts      Account[]
+  sessions      Session[]
+  appointments  Appointment[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── Barber Models ──────────────────────────────────────
+model Barber {
+  id          String    @id @default(cuid())
+  name        String
+  title       String?
+  image       String?
+  phone       String?
+  isActive    Boolean   @default(true)
+  services    Service[]
+  workingHours WorkingHours[]
+  appointments Appointment[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Service {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  duration    Int      // dakika cinsinden
+  price       Float
+  barberId    String
+  barber      Barber   @relation(fields: [barberId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model WorkingHours {
+  id        String @id @default(cuid())
+  barberId  String
+  barber    Barber @relation(fields: [barberId], references: [id], onDelete: Cascade)
+  dayOfWeek Int    // 0=Pazar, 1=Pazartesi ... 6=Cumartesi
+  startTime String // "09:00"
+  endTime   String // "19:00"
+  isOff     Boolean @default(false)
+
+  @@unique([barberId, dayOfWeek])
+}
+
+model Appointment {
+  id         String            @id @default(cuid())
+  userId     String
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  barberId   String
+  barber     Barber            @relation(fields: [barberId], references: [id], onDelete: Cascade)
+  serviceId  String
+  service    Service           @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  date       DateTime
+  startTime  String            // "14:00"
+  endTime    String            // "14:30"
+  status     AppointmentStatus @default(PENDING)
+  note       String?
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+// ─── Phone Verification ─────────────────────────────────
+model PhoneVerification {
+  id        String   @id @default(cuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  verified  Boolean  @default(false)
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([phone, code])
+}
