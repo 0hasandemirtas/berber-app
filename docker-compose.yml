@@ -24,6 +24,18 @@ services:
     volumes:
       - minio_data:/data
 
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    depends_on:
+      - db
+    command: >
+      sh -c "npx prisma migrate deploy && node server.js"
+
 volumes:
   postgres_data:
   minio_data:
